@@ -39,6 +39,7 @@ export class LoginComponent {
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      console.log('Formulaire invalide');
       return;
     }
 
