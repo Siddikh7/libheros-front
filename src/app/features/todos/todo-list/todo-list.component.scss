@@ -9,6 +9,22 @@
 	max-width: 960px;
 }
 
+.logout-button {
+	margin-left: auto;
+}
+
+.add-todo-form {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	margin-top: 16px;
+}
+
+.full-width {
+	flex: 1 1 360px;
+}
+
 .todo-table-wrap {
 	overflow-x: auto;
 	margin-top: 16px;
