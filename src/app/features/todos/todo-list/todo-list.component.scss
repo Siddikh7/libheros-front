@@ -1,0 +1,25 @@
+.todo-page {
+	padding: 24px;
+	display: flex;
+	justify-content: center;
+}
+
+.todo-card {
+	width: 100%;
+	max-width: 960px;
+}
+
+.todo-table-wrap {
+	overflow-x: auto;
+	margin-top: 16px;
+}
+
+.todo-table {
+	width: 100%;
+}
+
+.empty-state {
+	margin: 16px 0 0;
+	color: #666;
+	font-style: italic;
+}
