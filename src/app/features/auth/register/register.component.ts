@@ -28,6 +28,19 @@ function passwordMatchValidator(): ValidatorFn {
   };
 }
 
+function emailMatchValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const email = control.get('email')?.value;
+    const confirmEmail = control.get('confirmEmail')?.value;
+
+    if (!email || !confirmEmail) {
+      return null;
+    }
+
+    return email === confirmEmail ? null : { emailMismatch: true };
+  };
+}
+
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -53,11 +66,14 @@ export class RegisterComponent {
 
   readonly form = this.fb.nonNullable.group(
     {
+      firstName: ['', [Validators.required, Validators.minLength(2)]],
+      lastName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
+      confirmEmail: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       passwordConfirmation: ['', [Validators.required, Validators.minLength(8)]],
     },
-    { validators: passwordMatchValidator() },
+    { validators: [emailMatchValidator(), passwordMatchValidator()] },
   );
 
   submit(): void {

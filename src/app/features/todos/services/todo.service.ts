@@ -34,7 +34,7 @@ export interface Todo {
   id: string | number;
   title: string;
   isCompleted: boolean;
-  createdAt?: string;
+  createdAt: string;
   updatedAt?: string;
 }
 

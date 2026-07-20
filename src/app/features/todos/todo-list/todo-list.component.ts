@@ -5,12 +5,16 @@ import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { computed, signal } from '@angular/core';
 import { Todo, TodoService } from '../services/todo.service';
 import { AuthService } from '../../../core/auth/auth.service';
+
+type TodoFilter = 'all' | 'pending' | 'completed';
 
 @Component({
   selector: 'app-todo-list',
@@ -21,6 +25,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatCardModule,
     MatCheckboxModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatFormFieldModule,
     MatInputModule,
     MatSnackBarModule,
@@ -36,9 +41,26 @@ export class TodoListComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
-  todos: Todo[] = [];
+  readonly todos = signal<Todo[]>([]);
+  readonly selectedFilter = signal<TodoFilter>('all');
+  readonly editingTodoId = signal<Todo['id'] | null>(null);
+  readonly filteredTodos = computed(() => {
+    const filter = this.selectedFilter();
+    const todos = this.todos();
+
+    if (filter === 'pending') {
+      return todos.filter((todo) => !todo.isCompleted);
+    }
+
+    if (filter === 'completed') {
+      return todos.filter((todo) => todo.isCompleted);
+    }
+
+    return todos;
+  });
   isSubmitting = false;
-  readonly displayedColumns = ['title', 'status', 'actions'];
+  readonly displayedColumns = ['title', 'createdAt', 'status', 'actions'];
+  readonly editingTitle = this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]);
   readonly todoForm = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
   });
@@ -58,7 +80,7 @@ export class TodoListComponent implements OnInit {
 
     this.todoService.createTodo({ title }).subscribe({
       next: (newTask) => {
-        this.todos = [...this.todos, newTask];
+        this.todos.update((currentTodos) => [...currentTodos, newTask]);
         this.todoForm.reset();
         this.isSubmitting = false;
         this.notify('Tâche ajoutée avec succès.');
@@ -72,17 +94,68 @@ export class TodoListComponent implements OnInit {
   }
 
   toggleTodo(todo: Todo): void {
-    const previousStatus = todo.isCompleted;
-    todo.isCompleted = !todo.isCompleted;
+    const previousTodos = this.todos().map((item) => ({ ...item }));
+    const nextStatus = !todo.isCompleted;
 
-    this.todoService.updateTodo(todo.id, { isCompleted: todo.isCompleted }).subscribe({
+    this.todos.update((currentTodos) =>
+      currentTodos.map((item) =>
+        item.id === todo.id ? { ...item, isCompleted: nextStatus } : item,
+      ),
+    );
+
+    this.todoService.updateTodo(todo.id, { isCompleted: nextStatus }).subscribe({
       next: (updatedTodo) => {
-        this.todos = this.todos.map((item) => (item.id === updatedTodo.id ? updatedTodo : item));
+        this.todos.update((currentTodos) =>
+          currentTodos.map((item) => (item.id === updatedTodo.id ? updatedTodo : item)),
+        );
       },
       error: (err) => {
         console.error('Erreur lors de la mise à jour:', err);
-        todo.isCompleted = previousStatus;
+        this.todos.set(previousTodos);
         this.notify('Erreur de synchronisation. Statut restauré.', true);
+      },
+    });
+  }
+
+  setFilter(filter: TodoFilter): void {
+    this.selectedFilter.set(filter);
+  }
+
+  startEdit(todo: Todo): void {
+    this.editingTodoId.set(todo.id);
+    this.editingTitle.setValue(todo.title);
+    this.editingTitle.markAsPristine();
+    this.editingTitle.markAsUntouched();
+  }
+
+  cancelEdit(): void {
+    this.editingTodoId.set(null);
+    this.editingTitle.reset('');
+  }
+
+  saveEdit(todo: Todo): void {
+    if (this.editingTitle.invalid) {
+      this.editingTitle.markAsTouched();
+      return;
+    }
+
+    const title = this.editingTitle.getRawValue().trim();
+    if (title === todo.title) {
+      this.cancelEdit();
+      return;
+    }
+
+    this.todoService.updateTodo(todo.id, { title }).subscribe({
+      next: (updatedTodo) => {
+        this.todos.update((currentTodos) =>
+          currentTodos.map((item) => (item.id === updatedTodo.id ? updatedTodo : item)),
+        );
+        this.cancelEdit();
+        this.notify('Titre mis à jour avec succès.');
+      },
+      error: (err) => {
+        console.error('Erreur lors de la modification du titre:', err);
+        this.notify('Erreur : impossible de modifier le titre.', true);
       },
     });
   }
@@ -90,7 +163,7 @@ export class TodoListComponent implements OnInit {
   deleteTodo(todoId: string | number): void {
     this.todoService.deleteTodo(todoId).subscribe({
       next: () => {
-        this.todos = this.todos.filter((todo) => todo.id !== todoId);
+        this.todos.update((currentTodos) => currentTodos.filter((todo) => todo.id !== todoId));
         this.notify('Tâche supprimée.');
       },
       error: (err) => {
@@ -112,7 +185,7 @@ export class TodoListComponent implements OnInit {
   private loadTodos(): void {
     this.todoService.getTodos().subscribe({
       next: (todos) => {
-        this.todos = todos;
+        this.todos.set(todos);
       },
       error: (err) => {
         console.error('Erreur lors du chargement des tâches:', err);

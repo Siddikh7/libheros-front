@@ -26,11 +26,37 @@
 				</button>
 			</form>
 
+			<mat-button-toggle-group class="todo-filter" [value]="selectedFilter()" (valueChange)="setFilter($event)">
+				<mat-button-toggle value="all">Toutes</mat-button-toggle>
+				<mat-button-toggle value="pending">À faire</mat-button-toggle>
+				<mat-button-toggle value="completed">Terminées</mat-button-toggle>
+			</mat-button-toggle-group>
+
 			<div class="todo-table-wrap">
-				<table mat-table [dataSource]="todos" class="todo-table" [trackBy]="trackByTodoId">
+				<table mat-table [dataSource]="filteredTodos()" class="todo-table" [trackBy]="trackByTodoId">
 					<ng-container matColumnDef="title">
 						<th mat-header-cell *matHeaderCellDef>Tâche</th>
-						<td mat-cell *matCellDef="let todo">{{ todo.title }}</td>
+						<td mat-cell *matCellDef="let todo">
+							<ng-container *ngIf="editingTodoId() === todo.id; else titleDisplay">
+								<mat-form-field appearance="outline" class="inline-edit-field">
+									<input matInput [formControl]="editingTitle" placeholder="Titre de la tâche">
+									<mat-error *ngIf="editingTitle.hasError('required')">
+										Le titre est requis.
+									</mat-error>
+									<mat-error *ngIf="editingTitle.hasError('minlength')">
+										Le titre doit contenir au moins 3 caractères.
+									</mat-error>
+								</mat-form-field>
+							</ng-container>
+							<ng-template #titleDisplay>
+								{{ todo.title }}
+							</ng-template>
+						</td>
+					</ng-container>
+
+					<ng-container matColumnDef="createdAt">
+						<th mat-header-cell *matHeaderCellDef>Date de création</th>
+						<td mat-cell *matCellDef="let todo">{{ todo.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
 					</ng-container>
 
 					<ng-container matColumnDef="status">
@@ -45,9 +71,22 @@
 					<ng-container matColumnDef="actions">
 						<th mat-header-cell *matHeaderCellDef>Actions</th>
 						<td mat-cell *matCellDef="let todo">
-							<button mat-button color="warn" type="button" (click)="deleteTodo(todo.id)">
-								Supprimer
-							</button>
+							<ng-container *ngIf="editingTodoId() === todo.id; else rowActions">
+								<button mat-flat-button color="primary" type="button" (click)="saveEdit(todo)">
+									Valider
+								</button>
+								<button mat-button type="button" (click)="cancelEdit()">
+									Annuler
+								</button>
+							</ng-container>
+							<ng-template #rowActions>
+								<button mat-button color="primary" type="button" (click)="startEdit(todo)">
+									Éditer
+								</button>
+								<button mat-button color="warn" type="button" (click)="deleteTodo(todo.id)">
+									Supprimer
+								</button>
+							</ng-template>
 						</td>
 					</ng-container>
 
@@ -55,7 +94,7 @@
 					<tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
 				</table>
 
-				<p class="empty-state" *ngIf="todos.length === 0">
+				<p class="empty-state" *ngIf="filteredTodos().length === 0">
 					Aucune tâche disponible pour le moment.
 				</p>
 			</div>

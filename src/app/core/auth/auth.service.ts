@@ -8,7 +8,10 @@ export interface LoginPayload {
 }
 
 export interface RegisterPayload {
+  firstName: string;
+  lastName: string;
   email: string;
+  confirmEmail: string;
   password: string;
   passwordConfirmation: string;
 }
