@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -8,13 +8,18 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { computed, signal } from '@angular/core';
 import { Todo, TodoService } from '../services/todo.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import {
+  ConfirmDeleteDialogComponent,
+  ConfirmDeleteDialogData,
+} from './confirm-delete-dialog.component';
 
 type TodoFilter = 'all' | 'pending' | 'completed';
+type TodoSortOrder = 'desc' | 'asc';
 
 @Component({
   selector: 'app-todo-list',
@@ -28,6 +33,7 @@ type TodoFilter = 'all' | 'pending' | 'completed';
     MatButtonToggleModule,
     MatFormFieldModule,
     MatInputModule,
+    MatDialogModule,
     MatSnackBarModule,
     MatTableModule,
   ],
@@ -39,24 +45,44 @@ export class TodoListComponent implements OnInit {
   private readonly todoService = inject(TodoService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly todos = signal<Todo[]>([]);
   readonly selectedFilter = signal<TodoFilter>('all');
+  readonly searchTerm = signal('');
+  readonly sortOrder = signal<TodoSortOrder>('desc');
   readonly editingTodoId = signal<Todo['id'] | null>(null);
   readonly filteredTodos = computed(() => {
     const filter = this.selectedFilter();
+    const query = this.searchTerm().trim().toLowerCase();
+    const sortOrder = this.sortOrder();
     const todos = this.todos();
 
-    if (filter === 'pending') {
-      return todos.filter((todo) => !todo.isCompleted);
-    }
+    const filtered = todos
+      .filter((todo) => {
+        if (filter === 'pending' && todo.isCompleted) {
+          return false;
+        }
 
-    if (filter === 'completed') {
-      return todos.filter((todo) => todo.isCompleted);
-    }
+        if (filter === 'completed' && !todo.isCompleted) {
+          return false;
+        }
 
-    return todos;
+        if (!query) {
+          return true;
+        }
+
+        return todo.title.toLowerCase().includes(query);
+      })
+      .slice();
+
+    return filtered.sort((left, right) => {
+      const leftDate = new Date(left.createdAt).getTime();
+      const rightDate = new Date(right.createdAt).getTime();
+
+      return sortOrder === 'desc' ? rightDate - leftDate : leftDate - rightDate;
+    });
   });
   isSubmitting = false;
   readonly displayedColumns = ['title', 'createdAt', 'status', 'actions'];
@@ -121,6 +147,15 @@ export class TodoListComponent implements OnInit {
     this.selectedFilter.set(filter);
   }
 
+  setSearchTerm(event: Event): void {
+    const value = (event.target as HTMLInputElement | null)?.value ?? '';
+    this.searchTerm.set(value);
+  }
+
+  setSortOrder(order: TodoSortOrder): void {
+    this.sortOrder.set(order);
+  }
+
   startEdit(todo: Todo): void {
     this.editingTodoId.set(todo.id);
     this.editingTitle.setValue(todo.title);
@@ -160,7 +195,23 @@ export class TodoListComponent implements OnInit {
     });
   }
 
-  deleteTodo(todoId: string | number): void {
+  confirmDelete(todo: Todo): void {
+    const dialogData: ConfirmDeleteDialogData = {
+      title: todo.title,
+    };
+
+    this.dialog.open(ConfirmDeleteDialogComponent, {
+      width: '420px',
+      data: dialogData,
+      disableClose: true,
+    }).afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.deleteTodo(todo.id);
+      }
+    });
+  }
+
+  private deleteTodo(todoId: string | number): void {
     this.todoService.deleteTodo(todoId).subscribe({
       next: () => {
         this.todos.update((currentTodos) => currentTodos.filter((todo) => todo.id !== todoId));

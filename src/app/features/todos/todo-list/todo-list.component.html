@@ -2,7 +2,7 @@
 	<mat-card class="todo-card">
 		<mat-card-header>
 			<mat-card-title>Mes tâches</mat-card-title>
-			<mat-card-subtitle>Liste synchronisée depuis l'API NestJS</mat-card-subtitle>
+			<mat-card-subtitle>Liste des tâches</mat-card-subtitle>
 			<button mat-button color="warn" type="button" class="logout-button" (click)="logout()">
 				Déconnexion
 			</button>
@@ -25,6 +25,18 @@
 					Ajouter
 				</button>
 			</form>
+
+			<div class="todo-toolbar">
+				<mat-form-field appearance="outline" class="search-field">
+					<mat-label>Rechercher</mat-label>
+					<input matInput type="text" placeholder="Titre de la tâche" [value]="searchTerm()" (input)="setSearchTerm($event)">
+				</mat-form-field>
+
+				<mat-button-toggle-group class="todo-sort" [value]="sortOrder()" (valueChange)="setSortOrder($event)">
+					<mat-button-toggle value="desc">Plus récent</mat-button-toggle>
+					<mat-button-toggle value="asc">Plus ancien</mat-button-toggle>
+				</mat-button-toggle-group>
+			</div>
 
 			<mat-button-toggle-group class="todo-filter" [value]="selectedFilter()" (valueChange)="setFilter($event)">
 				<mat-button-toggle value="all">Toutes</mat-button-toggle>
@@ -83,7 +95,7 @@
 								<button mat-button color="primary" type="button" (click)="startEdit(todo)">
 									Éditer
 								</button>
-								<button mat-button color="warn" type="button" (click)="deleteTodo(todo.id)">
+								<button mat-button color="warn" type="button" (click)="confirmDelete(todo)">
 									Supprimer
 								</button>
 							</ng-template>

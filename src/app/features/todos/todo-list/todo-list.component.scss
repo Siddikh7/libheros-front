@@ -21,9 +21,25 @@
 	margin-top: 16px;
 }
 
+.todo-toolbar {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	margin-top: 16px;
+}
+
+.search-field {
+	flex: 1 1 280px;
+}
+
 .todo-filter {
 	margin-top: 16px;
 	margin-bottom: 8px;
+}
+
+.todo-sort {
+	margin-top: 4px;
 }
 
 .full-width {
