@@ -7,6 +7,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Todo, TodoService } from '../services/todo.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -22,6 +23,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSnackBarModule,
     MatTableModule,
   ],
   templateUrl: './todo-list.component.html',
@@ -32,10 +34,11 @@ export class TodoListComponent implements OnInit {
   private readonly todoService = inject(TodoService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
 
   todos: Todo[] = [];
   isSubmitting = false;
-  readonly displayedColumns = ['title', 'completed', 'actions'];
+  readonly displayedColumns = ['title', 'status', 'actions'];
   readonly todoForm = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
   });
@@ -58,25 +61,28 @@ export class TodoListComponent implements OnInit {
         this.todos = [...this.todos, newTask];
         this.todoForm.reset();
         this.isSubmitting = false;
+        this.notify('Tâche ajoutée avec succès.');
       },
       error: (err) => {
         console.error('Erreur lors de la création:', err);
         this.isSubmitting = false;
+        this.notify('Erreur : Impossible de créer la tâche.', true);
       },
     });
   }
 
   toggleTodo(todo: Todo): void {
-    const previousStatus = todo.completed;
-    todo.completed = !todo.completed;
+    const previousStatus = todo.isCompleted;
+    todo.isCompleted = !todo.isCompleted;
 
-    this.todoService.updateTodo(todo.id, { completed: todo.completed }).subscribe({
+    this.todoService.updateTodo(todo.id, { isCompleted: todo.isCompleted }).subscribe({
       next: (updatedTodo) => {
         this.todos = this.todos.map((item) => (item.id === updatedTodo.id ? updatedTodo : item));
       },
       error: (err) => {
         console.error('Erreur lors de la mise à jour:', err);
-        todo.completed = previousStatus;
+        todo.isCompleted = previousStatus;
+        this.notify('Erreur de synchronisation. Statut restauré.', true);
       },
     });
   }
@@ -85,9 +91,11 @@ export class TodoListComponent implements OnInit {
     this.todoService.deleteTodo(todoId).subscribe({
       next: () => {
         this.todos = this.todos.filter((todo) => todo.id !== todoId);
+        this.notify('Tâche supprimée.');
       },
       error: (err) => {
         console.error('Erreur lors de la suppression:', err);
+        this.notify('Erreur : Impossible de supprimer la tâche.', true);
       },
     });
   }
@@ -109,6 +117,15 @@ export class TodoListComponent implements OnInit {
       error: (err) => {
         console.error('Erreur lors du chargement des tâches:', err);
       },
+    });
+  }
+
+  private notify(message: string, isError = false): void {
+    this.snackBar.open(message, 'Fermer', {
+      duration: 3000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+      panelClass: isError ? ['error-snackbar'] : ['success-snackbar'],
     });
   }
 

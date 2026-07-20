@@ -1,4 +1,20 @@
-/* You can add global styles to this file, and also import other style files */
-
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.success-snackbar {
+	--mdc-snackbar-container-color: #2e7d32;
+	--mdc-snackbar-supporting-text-color: #ffffff;
+
+	.mat-mdc-button {
+		color: #ffffff;
+	}
+}
+
+.error-snackbar {
+	--mdc-snackbar-container-color: #d32f2f;
+	--mdc-snackbar-supporting-text-color: #ffffff;
+
+	.mat-mdc-button {
+		color: #ffb4ab;
+	}
+}

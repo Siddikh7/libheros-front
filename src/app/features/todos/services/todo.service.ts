@@ -33,14 +33,14 @@ export class TodoService {
 export interface Todo {
   id: string | number;
   title: string;
-  completed: boolean;
+  isCompleted: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateTodoPayload {
   title: string;
-  completed?: boolean;
+  isCompleted?: boolean;
 }
 
 export type UpdateTodoPayload = Partial<CreateTodoPayload>;
